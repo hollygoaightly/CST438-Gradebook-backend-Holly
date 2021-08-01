@@ -5,9 +5,9 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,7 +28,9 @@ import com.cst438.domain.Enrollment;
 import com.cst438.domain.GradebookDTO;
 import com.cst438.services.RegistrationService;
 
+
 @RestController
+@CrossOrigin(origins = "http://localhost:3000")
 public class GradeBookController {
 	
 	@Autowired
@@ -87,6 +89,118 @@ public class GradeBookController {
 			gradebook.grades.add(grade);
 		}
 		return gradebook;
+	}
+	
+	// add a new assignment to a course
+	@PostMapping("/gradebook")
+	@Transactional
+	public void createAssignment (@RequestBody AssignmentListDTO.AssignmentDTO newAssignment) {
+		
+		// check for request body
+		if(null == newAssignment) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Request body cannot be null." );
+		}
+		
+		// check for course id
+		if (newAssignment.courseId == 0 ) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Property courseId cannot must be specified for assignment." );
+		}
+		// get course from id
+		Course c = courseRepository.findByCourse_id(newAssignment.courseId);
+		if(c == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "course_id not found." );
+		}
+		// check that this request is from the course instructor 
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		if (!c.getInstructor().equals(email)) {
+			throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "Not Authorized. " );
+		}
+		
+		// check that all other required info is present
+		if (newAssignment.assignmentName == null || newAssignment.dueDate == null ) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Property assignmentName cannot be null for assignment." );
+		}
+		if (newAssignment.dueDate == null ) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Property dueDate cannot be null for assignment." );
+		}
+		// create assignment object from request DTO and save to the database
+		Assignment assignment = new Assignment();
+		assignment.setName(newAssignment.assignmentName);
+		assignment.setDueDate(java.sql.Date.valueOf(newAssignment.dueDate));
+		assignment.setCourse(c);
+		assignmentRepository.save(assignment);
+		
+	}
+	
+	
+	// update an assignment
+	// currently only name change is supported
+	@PostMapping("/gradebook/{assignment_id}")
+	@Transactional
+	public void updateAssignment (@RequestBody AssignmentListDTO.AssignmentDTO assignmentUpdate, @PathVariable int assignment_id) {
+		
+		// Assignment object 
+		Assignment assignment = assignmentRepository.findById(assignment_id);
+		
+		// check for assignment_id
+		if(null == assignment) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "AssignmentId not found." );
+		}
+		
+		// check for request body
+		if(null == assignmentUpdate) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Request body cannot be null." );
+		}
+				
+		// get course from id
+		Course c = assignment.getCourse();
+		if(c == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "course_id not found." );
+		}
+		// check that this request is from the course instructor 
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		if (!c.getInstructor().equals(email)) {
+			throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "Not Authorized. " );
+		}
+		
+		assignment.setName(assignmentUpdate.assignmentName);
+		
+		assignmentRepository.save(assignment);
+		
+	}
+	
+	
+	// delete an assignment
+	@DeleteMapping("/gradebook/{assignment_id}")
+	@Transactional
+	public void deleteAssignment (@PathVariable int assignment_id) {
+		
+		// Assignment object 
+		Assignment assignment = assignmentRepository.findById(assignment_id);
+		
+		// check for assignment_id
+		if(null == assignment) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "AssignmentId not found." );
+		}	
+		// get course from id
+		Course c = assignment.getCourse();
+		if(c == null) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "course_id not found." );
+		}
+		// check that this request is from the course instructor 
+		String email = "dwisneski@csumb.edu";  // user name (should be instructor's email) 
+		if (!c.getInstructor().equals(email)) {
+			throw new ResponseStatusException( HttpStatus.UNAUTHORIZED, "Not Authorized. " );
+		}
+		
+		// check that assignment has no grades 
+		//(might need a getter for assignment grades list size in assignment class but using pre-coded methods for now)
+		if(assignment.getNeedsGrading() == 1) {
+			throw new ResponseStatusException( HttpStatus.BAD_REQUEST, "Assignments with grades cannot be deleted. " );
+		}
+		
+		assignmentRepository.delete(assignment);
+		
 	}
 	
 	@PostMapping("/course/{course_id}/finalgrades")
