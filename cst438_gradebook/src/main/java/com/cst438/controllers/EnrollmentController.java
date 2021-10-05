@@ -41,7 +41,9 @@ public class EnrollmentController {
 		enrollment.setStudentName(enrollmentDTO.studentName);
 		enrollment.setStudentEmail(enrollmentDTO.studentEmail);
 		enrollment.setCourse(c);
-		enrollmentRepository.save(enrollment);
+		Enrollment result = enrollmentRepository.save(enrollment);
+		EnrollmentDTO resultDTO = new EnrollmentDTO();
+		resultDTO.id = result.getId();
 		
 		return null;
 	}
