@@ -35,8 +35,7 @@ public class Cst438GradebookApplication extends WebSecurityConfigurerAdapter {
 		SimpleUrlAuthenticationFailureHandler handler = new SimpleUrlAuthenticationFailureHandler("/");
 		http.cors();
  		http.csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
- 		// permit requests to /course without authentication. All other URLS are authenticated
- 		http.authorizeRequests().mvcMatchers(HttpMethod.PUT, "/course").permitAll();
+ 		// All URLS are authenticated
  		http.antMatcher("/**").authorizeRequests( a -> a.antMatchers("/", "/home", "/login", "/webjars/**").permitAll()
  		.anyRequest().authenticated())
  		.exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
